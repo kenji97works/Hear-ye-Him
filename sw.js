@@ -3,7 +3,7 @@
 //    version is fetched first, so updates arrive as usual.
 // 2. Saved text and saved recordings (kept by the app in this browser's storage) are answered from storage,
 //    including the "part of a file" requests a player makes while it plays or skips.
-const VERSION = 'bae05be89b';
+const VERSION = 'c9ea511ce7';
 const SHELL = 'msb-shell-' + VERSION;
 const FILES = ["./", "index.html", "manifest.json", "icon.png", "js/app.js", "fonts/Ionicons.ttf", "media/intro-poster.jpg", "media/intro-quote.mp3", "media/intro.mp4"];
 
@@ -16,6 +16,23 @@ self.addEventListener('activate', (e) => {
       .then((keys) => Promise.all(keys.filter((k) => k.startsWith('msb-shell-') && k !== SHELL).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
+});
+
+// The addresses of the saved recordings, kept in memory so a request can be answered at once. Until the
+// list is read (just after the helper starts) every recording request is checked against storage.
+let stored = null;
+const readStored = () =>
+  caches.open('msb-audio-v1')
+    .then((c) => c.keys())
+    .then((keys) => { stored = new Set(keys.map((r) => r.url)); })
+    .catch(() => {});
+readStored();
+// The app says when it has saved another recording.
+self.addEventListener('message', (e) => {
+  if (e.data && e.data.saved) {
+    if (stored) stored.add(e.data.saved);
+    else readStored();
+  }
 });
 
 // A recording's address without the retry mark the player adds (?try=2), so a saved copy is found.
@@ -55,7 +72,10 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) {
-    // A recording: the saved copy when there is one, otherwise over the internet as usual.
+    // A recording: the saved copy when there is one. Anything not saved is left alone entirely, so the
+    // browser plays it straight from its own server exactly as it would with no helper (iPhone Safari
+    // won't play some recordings that are passed along through a helper).
+    if (stored && !stored.has(key(req.url))) return;
     e.respondWith(fromStore(req).then((r) => r || fetch(req)));
     return;
   }
