@@ -4,7 +4,7 @@
 // 2. Saved text and saved recordings (kept by the app in this browser's storage) are answered from storage,
 //    including the "part of a file" requests a player makes while it plays or skips. The app asks for a saved
 //    recording at ./saved-audio?u=<its address>; recordings' own servers are never touched by this helper.
-const VERSION = 'ebb058e6ee';
+const VERSION = '5d3030a399';
 const SHELL = 'msb-shell-' + VERSION;
 const FILES = ["./", "index.html", "manifest.json", "icon.png", "js/app.js", "fonts/Ionicons.ttf", "media/intro-poster.jpg", "media/intro-quote.mp3", "media/intro.mp4"];
 
@@ -60,7 +60,8 @@ self.addEventListener('fetch', (e) => {
   // along). Every other site, such as the sermon recordings, is left alone, so the browser plays it straight
   // from its own server, exactly as it would with no helper.
   if (url.origin !== self.location.origin) {
-    if (url.hostname === 'archive.org' || url.hostname.endsWith('.archive.org')) e.respondWith(fetch(req));
+    // A failed fetch (Safari: "Load failed") becomes a network error the player retries, not an uncaught error.
+    if (url.hostname === 'archive.org' || url.hostname.endsWith('.archive.org')) e.respondWith(fetch(req).catch(() => Response.error()));
     return;
   }
   // The test copy of the app in wagner-preview/ is left alone, so it never touches this app's kept files.
@@ -69,7 +70,7 @@ self.addEventListener('fetch', (e) => {
   // own server if it has gone from storage.
   if (url.pathname.endsWith('/saved-audio')) {
     const real = url.searchParams.get('u');
-    e.respondWith(fromStore(req, real).then((r) => r || fetch(real, { headers: req.headers.get('range') ? { Range: req.headers.get('range') } : {} })));
+    e.respondWith(fromStore(req, real).then((r) => r || fetch(real, { headers: req.headers.get('range') ? { Range: req.headers.get('range') } : {} })).catch(() => Response.error()));
     return;
   }
   // The website's own files: the newest over the internet, or the kept copy when offline.
@@ -78,7 +79,7 @@ self.addEventListener('fetch', (e) => {
       .then((r) => {
         if (r.ok && (req.mode === 'navigate' || FILES.some((f) => f !== './' && url.pathname.endsWith('/' + f)))) {
           const copy = r.clone();
-          caches.open(SHELL).then((c) => c.put(req.mode === 'navigate' ? './' : req, copy));
+          caches.open(SHELL).then((c) => c.put(req.mode === 'navigate' ? './' : req, copy)).catch(() => {});
         }
         return r;
       })
