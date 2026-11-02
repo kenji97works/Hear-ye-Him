@@ -1,0 +1,10 @@
+{
+  "name": "Message Study Bible",
+  "short_name": "Study Bible",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0A1220",
+  "theme_color": "#0A1220",
+  "icons": [{ "src": "icon.png", "sizes": "512x512", "type": "image/png" }]
+}

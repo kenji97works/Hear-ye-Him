@@ -4,7 +4,7 @@
 // 2. Saved text and saved recordings (kept by the app in this browser's storage) are answered from storage,
 //    including the "part of a file" requests a player makes while it plays or skips. The app asks for a saved
 //    recording at ./saved-audio?u=<its address>; recordings' own servers are never touched by this helper.
-const VERSION = 'd1f0352dba';
+const VERSION = 'b1a57a552d';
 const SHELL = 'msb-shell-' + VERSION;
 const FILES = ["./", "index.html", "manifest.json", "icon.png", "js/app.js", "fonts/Ionicons.ttf", "media/intro-poster.jpg", "media/intro-quote.mp3", "media/intro.mp4"];
 
@@ -63,6 +63,8 @@ self.addEventListener('fetch', (e) => {
     if (url.hostname === 'archive.org' || url.hostname.endsWith('.archive.org')) e.respondWith(fetch(req));
     return;
   }
+  // The test copy of the app in wagner-preview/ is left alone, so it never touches this app's kept files.
+  if (url.pathname.includes('/wagner-preview/')) return;
   // A saved recording, asked for at ./saved-audio?u=<its usual address>: answered from storage, or from its
   // own server if it has gone from storage.
   if (url.pathname.endsWith('/saved-audio')) {
