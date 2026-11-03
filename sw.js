@@ -4,7 +4,7 @@
 // 2. Saved text and saved recordings (kept by the app in this browser's storage) are answered from storage,
 //    including the "part of a file" requests a player makes while it plays or skips. The app asks for a saved
 //    recording at ./saved-audio?u=<its address>; recordings' own servers are never touched by this helper.
-const VERSION = 'a4ab64835b';
+const VERSION = '9ae78945dd';
 const SHELL = 'msb-shell-' + VERSION;
 const FILES = ["./", "index.html", "manifest.json", "icon.png", "js/app.js", "fonts/Ionicons.ttf", "media/intro-poster.jpg", "media/intro-quote.mp3", "media/intro.mp4"];
 
