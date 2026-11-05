@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sound check</title>
+<style>
+  :root { --bg:#0A1220; --ink:#F5EBDD; --muted:#A9A39A; --accent:#F2A33A; --ok:#5BC07A; --bad:#E5645A; --card:#132036; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.45 -apple-system, system-ui, sans-serif; padding:16px; }
+  h1 { font-size:22px; margin:4px 0 6px; }
+  p { color:var(--muted); margin:0 0 14px; }
+  button { display:block; width:100%; margin:10px 0; padding:14px; border-radius:14px; border:0; background:var(--accent); color:#1b1206; font-size:17px; font-weight:700; }
+  .card { background:var(--card); border-radius:14px; padding:12px; margin:10px 0; font-size:13px; white-space:pre-wrap; word-break:break-word; }
+  .ok { color:var(--ok); font-weight:700; } .bad { color:var(--bad); font-weight:700; }
+</style>
+</head>
+<body>
+<h1>Bible sound check</h1>
+<p>Tap each orange button once, wait for its result, then take one screenshot of this page and send it.</p>
+<div class="card" id="info">Looking…</div>
+<button id="b1">1. Play John 14 straight from the internet</button>
+<div class="card" id="r1">Not tried yet</div>
+<button id="b2">2. Play John 14 the way the app does</button>
+<div class="card" id="r2">Not tried yet</div>
+<button id="b3">3. Play the copy saved on this phone</button>
+<div class="card" id="r3">Not tried yet</div>
+<script>
+const URL14 = 'https://hear-ye-him-bible.hearyehim.workers.dev/bible/43_John_014.mp3';
+const SILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+const $ = (id) => document.getElementById(id);
+async function info() {
+  const lines = [];
+  lines.push('Phone: ' + navigator.userAgent);
+  lines.push('Helper running: ' + (navigator.serviceWorker && navigator.serviceWorker.controller ? 'yes' : 'no'));
+  try {
+    const keys = await caches.keys();
+    lines.push('Kept: ' + keys.join(', '));
+    if (keys.includes('msb-audio-v1')) {
+      const c = await caches.open('msb-audio-v1');
+      const k = (await c.keys()).map((r) => r.url);
+      const bible = k.filter((u) => /\/bible\//.test(u));
+      const old = k.filter((u) => /archive\.org/.test(u));
+      lines.push('Saved Bible readings: ' + bible.length + ' (old reader: ' + old.length + '), all saved recordings: ' + k.length);
+      lines.push('John 14 saved: ' + (k.includes(URL14) ? 'yes' : 'no'));
+    }
+  } catch (e) { lines.push('Kept: could not look (' + e + ')'); }
+  try { const e = await navigator.storage.estimate(); lines.push('Room used: ' + Math.round(e.usage / 1e6) + ' MB of ' + Math.round(e.quota / 1e6) + ' MB'); } catch {}
+  try { const r = await fetch(URL14, { headers: { Range: 'bytes=0-1' } }); lines.push('Bible server: ' + r.status + ' ' + (r.headers.get('content-range') || '')); } catch (e) { lines.push('Bible server: FAILED ' + e); }
+  $('info').textContent = lines.join('\n');
+}
+info();
+function watch(a, out, label) {
+  const log = [];
+  const t0 = performance.now();
+  let done = false;
+  const say = (s) => { if (done) return; log.push(((performance.now() - t0) / 1000).toFixed(1) + 's ' + s); out.textContent = label + '\n' + log.join('\n'); };
+  ['loadedmetadata', 'canplay', 'playing', 'waiting', 'stalled', 'pause', 'ended'].forEach((ev) => a.addEventListener(ev, () => say(ev + ' at ' + a.currentTime.toFixed(1) + 's, length ' + (isFinite(a.duration) ? a.duration.toFixed(0) : '?'))));
+  a.addEventListener('error', () => say('ERROR code ' + (a.error && a.error.code) + ' ' + (a.error && a.error.message || '')));
+  setTimeout(() => {
+    done = true;
+    const moved = a.currentTime > 1 && !a.paused;
+    out.innerHTML = '';
+    const head = document.createElement('div');
+    head.className = moved ? 'ok' : 'bad';
+    head.textContent = moved ? 'PLAYED (' + a.currentTime.toFixed(1) + ' s heard)' : 'DID NOT PLAY (at ' + a.currentTime.toFixed(1) + ' s, ' + (a.paused ? 'paused' : 'not moving') + ', ready ' + a.readyState + ', network ' + a.networkState + ')';
+    out.appendChild(head);
+    out.appendChild(document.createTextNode(log.join('\n')));
+    a.pause();
+  }, 8000);
+  return say;
+}
+$('b1').onclick = () => {
+  const a = new Audio();
+  const say = watch(a, $('r1'), 'Trying…');
+  a.src = URL14;
+  a.play().then(() => say('play() ok'), (e) => say('play() refused: ' + e.name + ' ' + e.message));
+};
+$('b2').onclick = () => {
+  // Like the app: a silent sound in the tap, then the recording a moment later, quiet until it is there.
+  const a = new Audio();
+  a.crossOrigin = 'anonymous';
+  a.preload = 'auto';
+  const say = watch(a, $('r2'), 'Trying…');
+  a.src = SILENT;
+  a.play().catch(() => {});
+  setTimeout(() => {
+    a.src = URL14;
+    a.load();
+    a.muted = true;
+    a.play().then(() => say('play() ok'), (e) => say('play() refused: ' + e.name + ' ' + e.message));
+    a.addEventListener('playing', () => setTimeout(() => { a.muted = false; say('sound on'); }, 400), { once: true });
+  }, 600);
+};
+$('b3').onclick = () => {
+  const a = new Audio();
+  a.crossOrigin = 'anonymous';
+  const say = watch(a, $('r3'), 'Trying…');
+  a.src = new URL('saved-audio?u=' + encodeURIComponent(URL14), document.baseURI).href;
+  a.play().then(() => say('play() ok'), (e) => say('play() refused: ' + e.name + ' ' + e.message));
+};
+</script>
+</body>
+</html>
