@@ -20,9 +20,7 @@
 <div class="card" id="info">Looking…</div>
 <button id="b1">1. Play John 14 straight from the internet</button>
 <div class="card" id="r1">Not tried yet</div>
-<button id="b2">2. Play John 14 the way the app does</button>
-<div class="card" id="r2">Not tried yet</div>
-<button id="b3">3. Play the copy saved on this phone</button>
+<button id="b3">2. Play the copy saved on this phone</button>
 <div class="card" id="r3">Not tried yet</div>
 <script>
 const URL14 = 'https://hear-ye-him-bible.hearyehim.workers.dev/bible/43_John_014.mp3';
@@ -74,22 +72,6 @@ $('b1').onclick = () => {
   const say = watch(a, $('r1'), 'Trying…');
   a.src = URL14;
   a.play().then(() => say('play() ok'), (e) => say('play() refused: ' + e.name + ' ' + e.message));
-};
-$('b2').onclick = () => {
-  // Like the app: a silent sound in the tap, then the recording a moment later, quiet until it is there.
-  const a = new Audio();
-  a.crossOrigin = 'anonymous';
-  a.preload = 'auto';
-  const say = watch(a, $('r2'), 'Trying…');
-  a.src = SILENT;
-  a.play().catch(() => {});
-  setTimeout(() => {
-    a.src = URL14;
-    a.load();
-    a.muted = true;
-    a.play().then(() => say('play() ok'), (e) => say('play() refused: ' + e.name + ' ' + e.message));
-    a.addEventListener('playing', () => setTimeout(() => { a.muted = false; say('sound on'); }, 400), { once: true });
-  }, 600);
 };
 $('b3').onclick = () => {
   const a = new Audio();
