@@ -66,6 +66,8 @@ self.addEventListener('fetch', (e) => {
   }
   // The test copy of the app in wagner-preview/ is left alone, so it never touches this app's kept files.
   if (url.pathname.includes('/wagner-preview/')) return;
+  // The Android app download page and file are left alone too, so a downloaded app is never kept as the website.
+  if (url.pathname.includes('/android-app/')) return;
   // A saved recording, asked for at ./saved-audio?u=<its usual address>: answered from storage, or from its
   // own server if it has gone from storage.
   if (url.pathname.endsWith('/saved-audio')) {
